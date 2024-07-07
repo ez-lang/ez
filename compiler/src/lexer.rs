@@ -6,8 +6,12 @@ pub struct Lexer<'a> {
 #[derive(Debug)]
 pub enum TokenKind {
     Unknown,
-
     Identifier,
+
+    // Keywords
+    Mut,
+
+    // Primitives
     Integer,
     Float,
     String,
@@ -77,6 +81,28 @@ impl<'a> Lexer<'a> {
         token
     }
 
+    fn tokenize_identifier(&mut self) -> Token {
+        let mut token = Token {
+            kind: TokenKind::Identifier,
+            value: String::from(self.current().unwrap()),
+        };
+
+        while let Some(c) = self.advance() {
+            if !c.is_ascii_alphanumeric() {
+                break;
+            }
+
+            token.value.push(c);
+        }
+
+        match token.value.as_str() {
+            "mut" => token.kind = TokenKind::Mut,
+            _ => {}
+        }
+
+        token
+    }
+
     pub fn tokenize(&mut self) -> Option<Token> {
         loop {
             let c = self.current()?;
@@ -87,6 +113,10 @@ impl<'a> Lexer<'a> {
 
             if Self::is_number_token(c) {
                 return Some(self.tokenize_number());
+            }
+
+            if c.is_ascii_alphabetic() {
+                return Some(self.tokenize_identifier());
             }
 
             return Some(self.tokenize_unknown());
