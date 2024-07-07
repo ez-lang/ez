@@ -1,5 +1,5 @@
-# this is a basic ez-lang example
-
 main := () {
+	mut a := 10;
+	a = 20;
 	print("hello!");
 }
