@@ -14,6 +14,24 @@ pub enum ParseError {
 }
 
 #[derive(Debug)]
+enum BaseType {
+    Number,
+    String,
+    Function,
+}
+
+#[derive(Debug)]
+pub enum ValueExpr {
+    Number(f64),
+    String(String),
+    Function {
+        params: Vec<(String, BaseType)>,
+        body: Vec<Expr>,
+        return_type: BaseType,
+    },
+}
+
+#[derive(Debug)]
 pub enum Expr {
     Binary {
         left: Box<Expr>,
@@ -23,11 +41,8 @@ pub enum Expr {
 
     Declaration {
         identifier: String,
-        value: Box<Expr>,
+        value: Box<ValueExpr>,
     },
-
-    Number(f64),
-    String(String),
 }
 
 impl Expr {
@@ -52,7 +67,7 @@ impl<'a> Parser<'a> {
         &self.current
     }
 
-    fn parse_value(&mut self) -> Result<Expr, ParseError> {
+    fn parse_value(&mut self) -> Result<ValueExpr, ParseError> {
         let token = self.current().clone().unwrap();
         match token.kind {
             // For now all numbers will be the same type
@@ -61,10 +76,10 @@ impl<'a> Parser<'a> {
                     return Err(ParseError::InvalidNumber(token));
                 };
 
-                Ok(Expr::Number(number))
+                Ok(ValueExpr::Number(number))
             }
 
-            TokenKind::String => Ok(Expr::String(token.value)),
+            TokenKind::String => Ok(ValueExpr::String(token.value)),
 
             _ => Err(ParseError::UnexpectedToken(token)),
         }
