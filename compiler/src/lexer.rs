@@ -5,7 +5,7 @@ pub struct Lexer<'a> {
     pos: usize,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum TokenKind {
     Unknown,
     Identifier,

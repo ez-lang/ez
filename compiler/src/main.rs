@@ -1,8 +1,8 @@
 mod lexer;
+mod parser;
 
+use crate::parser::{ParseError, Parser};
 use std::fs;
-
-use crate::lexer::Lexer;
 
 fn main() {
     let content = fs::read_to_string("examples/basic.ez").expect("failed to read file");
@@ -10,8 +10,17 @@ fn main() {
     println!("{}", content);
     println!();
 
-    let mut lexer = Lexer::new(&content);
-    while let Some(token) = lexer.tokenize() {
-        println!("token: {:?}", token);
+    let mut parser = Parser::new(&content);
+    loop {
+        let result = parser.parse();
+        match result {
+            Ok(expr) => {
+                println!("EXPR: {:?}", expr);
+            }
+
+            Err(ParseError::NoMoreTokens) => break,
+
+            Err(e) => println!("ERROR: {:?}", e),
+        }
     }
 }

@@ -6,3 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+inkwell = { git = "https://github.com/TheDan64/inkwell", features = ["llvm17-0"] } # LLVM 18 support not uploaded to crates.io yet
+                                                                                   # Change this when 0.5 releases
+
