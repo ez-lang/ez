@@ -1,9 +1,11 @@
+use std::{collections::HashMap, sync::OnceLock};
+
 pub struct Lexer<'a> {
     content: &'a str,
     pos: usize,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum TokenKind {
     Unknown,
     Identifier,
@@ -30,7 +32,7 @@ pub enum TokenKind {
     Assignment,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Token {
     pub kind: TokenKind,
     pub value: String,
@@ -135,92 +137,78 @@ impl<'a> Lexer<'a> {
         token
     }
 
-    fn is_symbol_token(c: char) -> bool {
-        c == '{'
-            || c == '}'
-            || c == '('
-            || c == ')'
-            || c == '['
-            || c == ']'
-            || c == '.'
-            || c == ','
-            || c == ':'
-            || c == '='
-            || c == ';'
+    fn symbol_table() -> &'static HashMap<String, Token> {
+        static TABLE: OnceLock<HashMap<String, Token>> = OnceLock::new();
+        TABLE.get_or_init(|| {
+            let token_pairs = [
+                ("{", TokenKind::LeftCurly),
+                ("}", TokenKind::RightCurly),
+                ("(", TokenKind::LeftParen),
+                (")", TokenKind::RightParen),
+                ("[", TokenKind::LeftBracket),
+                ("]", TokenKind::RightBracket),
+                (".", TokenKind::Dot),
+                (",", TokenKind::Comma),
+                (":", TokenKind::Colon),
+                (";", TokenKind::Semi),
+                (":=", TokenKind::Assignment),
+            ];
+            let mut table = HashMap::new();
+
+            for pair in token_pairs {
+                table.insert(
+                    pair.0.to_string(),
+                    Token {
+                        kind: pair.1,
+                        value: pair.0.to_string(),
+                    },
+                );
+            }
+
+            table
+        })
     }
 
-    // TODO: Ensure all `is_symbol_token`s are handled here using some sort of type safety
+    fn is_symbol_token(c: char) -> bool {
+        // TODO: Make symbol chars static
+        let mut symbol_chars = String::new();
+        for (key, _) in Self::symbol_table() {
+            symbol_chars.push_str(key);
+        }
+
+        symbol_chars.chars().find(|&search| search == c).is_some()
+    }
+
     fn tokenize_symbol(&mut self) -> Token {
-        let token = match self.current().unwrap() {
-            '{' => Token {
-                kind: TokenKind::LeftCurly,
-                value: String::from('{'),
-            },
+        let c = self.current().unwrap();
+        let table = Self::symbol_table();
 
-            '}' => Token {
-                kind: TokenKind::RightCurly,
-                value: String::from('}'),
-            },
-
-            '(' => Token {
-                kind: TokenKind::LeftParen,
-                value: String::from('('),
-            },
-
-            ')' => Token {
-                kind: TokenKind::RightParen,
-                value: String::from(')'),
-            },
-
-            '[' => Token {
-                kind: TokenKind::LeftBracket,
-                value: String::from('['),
-            },
-
-            ']' => Token {
-                kind: TokenKind::RightBracket,
-                value: String::from(']'),
-            },
-
-            '.' => Token {
-                kind: TokenKind::Dot,
-                value: String::from('.'),
-            },
-
-            ',' => Token {
-                kind: TokenKind::Comma,
-                value: String::from(','),
-            },
-
+        let token = match c {
             ':' => {
-                let regular_colon_token = Token {
-                    kind: TokenKind::Colon,
-                    value: String::from(':'),
-                };
+                let regular_colon_token = &table[&c.to_string()];
 
                 let Some(next) = self.advance() else {
-                    return regular_colon_token;
+                    return regular_colon_token.to_owned();
                 };
 
                 if next != '=' {
-                    return regular_colon_token;
+                    return regular_colon_token.to_owned();
                 }
 
-                Token {
-                    kind: TokenKind::Assignment,
-                    value: String::from(":="),
-                }
+                table[":="].clone()
             }
 
-            ';' => Token {
-                kind: TokenKind::Semi,
-                value: String::from(';'),
-            },
-
-            c => Token {
-                kind: TokenKind::Unknown,
-                value: String::from(c),
-            },
+            c => {
+                let char_str = c.to_string();
+                if table.contains_key(&char_str) {
+                    table[&char_str].to_owned()
+                } else {
+                    Token {
+                        kind: TokenKind::Unknown,
+                        value: String::from(c),
+                    }
+                }
+            }
         };
 
         self.advance();
