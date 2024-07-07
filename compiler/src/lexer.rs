@@ -103,6 +103,25 @@ impl<'a> Lexer<'a> {
         token
     }
 
+    fn tokenize_string(&mut self) -> Token {
+        let mut token = Token {
+            kind: TokenKind::Unknown, // if the string is not closed, it will return an Unknown token
+            value: String::new(),
+        };
+
+        while let Some(c) = self.advance() {
+            if c == '"' {
+                token.kind = TokenKind::String;
+                self.advance();
+                break;
+            }
+
+            token.value.push(c);
+        }
+
+        token
+    }
+
     pub fn tokenize(&mut self) -> Option<Token> {
         loop {
             let c = self.current()?;
@@ -117,6 +136,10 @@ impl<'a> Lexer<'a> {
 
             if c.is_ascii_alphabetic() {
                 return Some(self.tokenize_identifier());
+            }
+
+            if c == '"' {
+                return Some(self.tokenize_string());
             }
 
             return Some(self.tokenize_unknown());

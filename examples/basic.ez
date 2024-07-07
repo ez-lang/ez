@@ -5,5 +5,7 @@ main := () {
 	b := 2.69;
 	c := .5;
 
+	text := "my text"
+
 	print("hello!");
 }
