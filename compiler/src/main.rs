@@ -20,7 +20,10 @@ fn main() {
 
             Err(ParseError::NoMoreTokens) => break,
 
-            Err(e) => println!("ERROR: {:?}", e),
+            Err(e) => {
+                println!("ERROR: {:?}", e);
+                break;
+            }
         }
     }
 }

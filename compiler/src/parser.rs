@@ -14,10 +14,20 @@ pub enum ParseError {
 }
 
 #[derive(Debug)]
-enum BaseType {
+pub struct Param {
+    identifier: String,
+    basetype: BaseType,
+}
+
+#[derive(Debug)]
+pub enum BaseType {
+    Void,
     Number,
     String,
-    Function,
+    Function {
+        params: Vec<Param>,
+        return_type: Box<BaseType>,
+    },
 }
 
 #[derive(Debug)]
@@ -25,9 +35,9 @@ pub enum ValueExpr {
     Number(f64),
     String(String),
     Function {
-        params: Vec<(String, BaseType)>,
-        body: Vec<Expr>,
+        params: Vec<Param>,
         return_type: BaseType,
+        body: Vec<Expr>,
     },
 }
 
@@ -42,6 +52,10 @@ pub enum Expr {
     Declaration {
         identifier: String,
         value: Box<ValueExpr>,
+    },
+
+    Block {
+        body: Vec<Expr>,
     },
 }
 
@@ -67,6 +81,46 @@ impl<'a> Parser<'a> {
         &self.current
     }
 
+    fn parse_function(&mut self) -> Result<ValueExpr, ParseError> {
+        // lets ignore arguments for now!
+        let mut body: Vec<Expr> = vec![];
+
+        // go to left curly
+        let mut previous = self.current().clone().unwrap();
+        loop {
+            let Some(token) = self.advance() else {
+                return Err(ParseError::MissingTokenAfter(previous));
+            };
+
+            if token.kind == TokenKind::LeftCurly {
+                break;
+            }
+
+            previous = token.to_owned();
+        }
+
+        // loop until right curly
+        loop {
+            let Some(token) = self.advance() else {
+                return Err(ParseError::MissingTokenAfter(previous));
+            };
+
+            if token.kind == TokenKind::RightCurly {
+                self.advance();
+                break;
+            }
+
+            previous = token.to_owned();
+            body.push(self.parse()?);
+        }
+
+        Ok(ValueExpr::Function {
+            params: vec![],
+            return_type: BaseType::Void,
+            body,
+        })
+    }
+
     fn parse_value(&mut self) -> Result<ValueExpr, ParseError> {
         let token = self.current().clone().unwrap();
         match token.kind {
@@ -76,10 +130,17 @@ impl<'a> Parser<'a> {
                     return Err(ParseError::InvalidNumber(token));
                 };
 
+                self.advance();
+
                 Ok(ValueExpr::Number(number))
             }
 
-            TokenKind::String => Ok(ValueExpr::String(token.value)),
+            TokenKind::String => {
+                self.advance();
+                Ok(ValueExpr::String(token.value))
+            }
+
+            TokenKind::Fn => self.parse_function(),
 
             _ => Err(ParseError::UnexpectedToken(token)),
         }
@@ -99,6 +160,19 @@ impl<'a> Parser<'a> {
 
                 let value_expr = self.parse_value()?;
 
+                match value_expr {
+                    ValueExpr::Function { .. } => {}
+                    _ => {
+                        let Some(token) = self.current() else {
+                            return Err(ParseError::MissingTokenAfter(next));
+                        };
+
+                        if token.kind != TokenKind::Semi {
+                            return Err(ParseError::UnexpectedToken(token.to_owned()));
+                        }
+                    }
+                }
+
                 Ok(Expr::Declaration {
                     identifier: ident.value,
                     value: Box::new(value_expr),
@@ -110,7 +184,11 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse(&mut self) -> Result<Expr, ParseError> {
-        let Some(token) = self.advance() else {
+        if self.current().is_none() {
+            self.advance();
+        }
+
+        let Some(token) = self.current() else {
             return Err(ParseError::NoMoreTokens);
         };
 

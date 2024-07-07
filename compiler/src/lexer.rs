@@ -11,6 +11,7 @@ pub enum TokenKind {
     Identifier,
 
     // Keywords
+    Fn,
     Mut,
     If,
     Else,
@@ -137,6 +138,7 @@ impl<'a> Lexer<'a> {
         }
 
         match token.value.as_str() {
+            "fn" => token.kind = TokenKind::Fn,
             "mut" => token.kind = TokenKind::Mut,
             "if" => token.kind = TokenKind::If,
             "else" => token.kind = TokenKind::Else,
