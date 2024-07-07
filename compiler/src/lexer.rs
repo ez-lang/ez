@@ -29,7 +29,31 @@ pub enum TokenKind {
     Comma,
     Colon,
     Semi,
-    Assignment,
+    DeclAssign,
+    Assign,
+
+    // Math Operators
+    Plus,
+    Minus,
+    Times,
+    DividedBy,
+
+    // Conditional Operators
+    Equals,
+    Not,
+    NotEquals,
+    GreaterThan,
+    GreaterOrEquals,
+    LowerThan,
+    LowerOrEquals,
+    Or,
+    And,
+
+    // Bitwise Operator
+    BitAnd,
+    BitOr,
+    BitXor,
+    BitNot,
 }
 
 #[derive(Debug, Clone)]
@@ -141,6 +165,7 @@ impl<'a> Lexer<'a> {
         static TABLE: OnceLock<HashMap<String, Token>> = OnceLock::new();
         TABLE.get_or_init(|| {
             let token_pairs = [
+                // Symbols and Operators
                 ("{", TokenKind::LeftCurly),
                 ("}", TokenKind::RightCurly),
                 ("(", TokenKind::LeftParen),
@@ -151,7 +176,28 @@ impl<'a> Lexer<'a> {
                 (",", TokenKind::Comma),
                 (":", TokenKind::Colon),
                 (";", TokenKind::Semi),
-                (":=", TokenKind::Assignment),
+                (":=", TokenKind::DeclAssign),
+                ("=", TokenKind::Assign),
+                // Math Operators
+                ("+", TokenKind::Plus),
+                ("-", TokenKind::Minus),
+                ("*", TokenKind::Times),
+                ("/", TokenKind::DividedBy),
+                // Conditional Operators
+                ("==", TokenKind::Equals),
+                ("!", TokenKind::Not),
+                ("!=", TokenKind::NotEquals),
+                ("||", TokenKind::Or),
+                ("&&", TokenKind::And),
+                (">", TokenKind::GreaterThan),
+                (">=", TokenKind::GreaterOrEquals),
+                ("<", TokenKind::LowerThan),
+                ("<=", TokenKind::LowerOrEquals),
+                // Bitwise Operators
+                ("&", TokenKind::BitAnd),
+                ("|", TokenKind::BitOr),
+                ("^", TokenKind::BitXor),
+                ("~", TokenKind::BitNot),
             ];
             let mut table = HashMap::new();
 
@@ -170,11 +216,14 @@ impl<'a> Lexer<'a> {
     }
 
     fn is_symbol_token(c: char) -> bool {
-        // TODO: Make symbol chars static
-        let mut symbol_chars = String::new();
-        for (key, _) in Self::symbol_table() {
-            symbol_chars.push_str(key);
-        }
+        static SYMBOL_CHARS: OnceLock<String> = OnceLock::new();
+        let symbol_chars = SYMBOL_CHARS.get_or_init(|| {
+            Self::symbol_table()
+                .keys()
+                .map(|s| s.as_str())
+                .collect::<Vec<&str>>()
+                .join("")
+        });
 
         symbol_chars.chars().find(|&search| search == c).is_some()
     }
@@ -184,18 +233,32 @@ impl<'a> Lexer<'a> {
         let table = Self::symbol_table();
 
         let token = match c {
-            ':' => {
-                let regular_colon_token = &table[&c.to_string()];
+            ':' | '=' | '>' | '<' | '!' => {
+                let regular = &table[&c.to_string()];
 
                 let Some(next) = self.advance() else {
-                    return regular_colon_token.to_owned();
+                    return regular.to_owned();
                 };
 
                 if next != '=' {
-                    return regular_colon_token.to_owned();
+                    return regular.to_owned();
                 }
 
-                table[":="].clone()
+                table[&format!("{}=", c)].clone()
+            }
+
+            '&' | '|' => {
+                let regular = &table[&c.to_string()];
+
+                let Some(next) = self.advance() else {
+                    return regular.to_owned();
+                };
+
+                if next != c {
+                    return regular.to_owned();
+                }
+
+                table[&format!("{}{}", c, c)].clone()
             }
 
             c => {

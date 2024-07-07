@@ -5,6 +5,18 @@ main := (argc: i32, argv: []str) {
 	b := 2.69;
 	c := .5;
 
+	if b > c {
+		print("b is greater than to c");
+	} else if b == c {
+		print("b is equal to c");
+	} else {
+		print("c is greater than b");
+	}
+
+	if a >= 15 && (a & 1 || b < 10) || ((c ^ c) | b) {
+		print("weird condition")
+	}
+
 	text := "my text"
 
 	print("hello!");
