@@ -1,0 +1,5 @@
+# this is a basic ez-lang example
+
+main := () {
+	print("hello!");
+}

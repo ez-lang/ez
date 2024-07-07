@@ -1,0 +1,104 @@
+use myfile; # will include myfile in the compilation, and also allow you to use it's contents: myfile::thing
+
+myfunc := () {
+	# do stuff
+}
+
+struct Thing {
+	# fields only
+	name: String,
+	number: i32
+}
+
+enum MyEnum {
+	Identifier,
+	Equals,
+	Number,
+	String,
+	LeftParen,
+	RightParen,
+}
+
+trait MyPrintable {
+	print: (self) void; # looks kinda odd?
+}
+
+consumes_thing := (consumed: String, not_consumed: $mut String) void {
+	print("this string is mine now: {}", consumed);
+	print("i'm just borrowing this one: {}", not_consumed);
+
+	not_consummed.push("abc");
+	print("i can also mutate the mutable reference");
+}
+
+main := (argc: i32, argv: []str) {
+	## Async ##
+	# functions don't need to be colored in order to run asynchronously
+	async myfunc();
+
+	## Mutability ##
+	# values are const by default
+	# you opt-in to mutability with 'mut' (pronouced 'mute', not 'mutt' ;) )
+	mut x := 10;
+	x += 5;
+
+	## Pointers ##
+	# you indicate pointers with '*'
+	# you get addresses with '&'
+	ptr_x *i32 := &x;
+	# or just
+	ptr_x := &x;
+
+	## References (not sure about this yet D:) ##
+	# references are represented by $
+	ref_x := $x;
+	ref_x += 10; # will increment the real x
+
+	## Memory Management (not sure about this yet) ##
+	# primitives will be COPIED (numbers, strings, pointers, etc)
+	# everything else will be MOVED (structs, enums, ...)
+	# ... UNLESS you pass by reference
+	# References will be both reference-counted and atomic referenced-count (if on async) (is this possible???)
+
+	## Uninitialization ##
+	# there is a 'defer' statement which will execute unconditionally at the end of the function
+	addr := mem::alloc(10);
+	defer free(addr); # no matter what happens, whenever this function exits, the memory gets deallocated
+					  # (no destructors, `goto`s and hidden control flow needed)
+
+	## Generics ##
+	# Generics are handled just like Rust's: trait-based
+	# <T> means any type, <T = SomeTrait + AnotherTrait> means any type that implements
+	# 'SomeTrait' and 'AnotherTrait'
+	my_generic := <T = MyPrintableTrait, S = MyPrintableTrait + MySummable> (printable $T, summable $S) {
+		printable.print();
+		summable += 10;
+		summable.print();
+	}
+
+	## Macros and Compile Time ##
+	# stuff that runs in the compile time should use the 'macro' keyword
+	# for example:
+	preprocessed_fibonacci := macro fibonacci(20); # fibonacci(20) will run at compile time
+	                                               # and the value will be hardcoded
+	# TODO: think dynamic code generation!
+
+	## Error Handling ##
+	# errors are handled through containers like Option<T>
+	# and Result<T, E>.
+	# All error values must implement the `Error` trait, which
+	# makes it easier for you to bubble up an error.
+	# To attempt to read a value and return the error on failure,
+	# you can use the `try` keyword
+	my_failable_function := () Result<T, Error> {
+		value := try read_file("somefile.txt"); # if this fails function, it will just return the error (bubble up)i
+		# or you can handle the error yourself with destructuring
+		value := match read_file("anotherfile.txt") {
+			Ok(val) { val }
+			Err(NoSuchFile) { print("file doesn't exist"); return Error("missing file"); }
+			Err(e) { return e; }
+		}
+	}
+	# options work the same way, but they don't have a error value
+	option := try get_thing_if_exists(); # returns None if doesn't exist
+}
