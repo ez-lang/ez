@@ -33,6 +33,10 @@ impl<'a> Lexer<'a> {
         self.content.chars().nth(self.pos)
     }
 
+    fn is_number_token(c: char) -> bool {
+        c.is_ascii_digit() || c == '.'
+    }
+
     fn tokenize_number(&mut self) -> Token {
         let mut kind = TokenKind::Integer;
         let mut number_str = String::new();
@@ -45,7 +49,7 @@ impl<'a> Lexer<'a> {
             number_str.push(cur);
 
             let Some(next) = self.advance() else { break };
-            if !next.is_ascii_digit() && next != '.' {
+            if !Self::is_number_token(next) {
                 break;
             }
         }
@@ -56,6 +60,23 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    fn tokenize_unknown(&mut self) -> Token {
+        let mut token = Token {
+            kind: TokenKind::Unknown,
+            value: String::from(self.current().unwrap()),
+        };
+
+        while let Some(c) = self.advance() {
+            if c.is_whitespace() {
+                break;
+            }
+
+            token.value.push(c);
+        }
+
+        token
+    }
+
     pub fn tokenize(&mut self) -> Option<Token> {
         loop {
             let c = self.current()?;
@@ -64,11 +85,11 @@ impl<'a> Lexer<'a> {
                 continue;
             }
 
-            if c.is_ascii_digit() || c == '.' {
+            if Self::is_number_token(c) {
                 return Some(self.tokenize_number());
             }
 
-            self.advance();
+            return Some(self.tokenize_unknown());
         }
     }
 }
