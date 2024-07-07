@@ -15,6 +15,19 @@ pub enum TokenKind {
     Integer,
     Float,
     String,
+
+    // Symbols and Operators
+    LeftCurly,
+    RightCurly,
+    LeftParen,
+    RightParen,
+    LeftBracket,
+    RightBracket,
+    Dot,
+    Comma,
+    Colon,
+    Semi,
+    Assignment,
 }
 
 #[derive(Debug)]
@@ -88,7 +101,7 @@ impl<'a> Lexer<'a> {
         };
 
         while let Some(c) = self.advance() {
-            if !c.is_ascii_alphanumeric() {
+            if !c.is_ascii_alphanumeric() || c == '_' {
                 break;
             }
 
@@ -122,6 +135,99 @@ impl<'a> Lexer<'a> {
         token
     }
 
+    fn is_symbol_token(c: char) -> bool {
+        c == '{'
+            || c == '}'
+            || c == '('
+            || c == ')'
+            || c == '['
+            || c == ']'
+            || c == '.'
+            || c == ','
+            || c == ':'
+            || c == '='
+            || c == ';'
+    }
+
+    // TODO: Ensure all `is_symbol_token`s are handled here using some sort of type safety
+    fn tokenize_symbol(&mut self) -> Token {
+        let token = match self.current().unwrap() {
+            '{' => Token {
+                kind: TokenKind::LeftCurly,
+                value: String::from('{'),
+            },
+
+            '}' => Token {
+                kind: TokenKind::RightCurly,
+                value: String::from('}'),
+            },
+
+            '(' => Token {
+                kind: TokenKind::LeftParen,
+                value: String::from('('),
+            },
+
+            ')' => Token {
+                kind: TokenKind::RightParen,
+                value: String::from(')'),
+            },
+
+            '[' => Token {
+                kind: TokenKind::LeftBracket,
+                value: String::from('['),
+            },
+
+            ']' => Token {
+                kind: TokenKind::RightBracket,
+                value: String::from(']'),
+            },
+
+            '.' => Token {
+                kind: TokenKind::Dot,
+                value: String::from('.'),
+            },
+
+            ',' => Token {
+                kind: TokenKind::Comma,
+                value: String::from(','),
+            },
+
+            ':' => {
+                let regular_colon_token = Token {
+                    kind: TokenKind::Colon,
+                    value: String::from(':'),
+                };
+
+                let Some(next) = self.advance() else {
+                    return regular_colon_token;
+                };
+
+                if next != '=' {
+                    return regular_colon_token;
+                }
+
+                Token {
+                    kind: TokenKind::Assignment,
+                    value: String::from(":="),
+                }
+            }
+
+            ';' => Token {
+                kind: TokenKind::Semi,
+                value: String::from(';'),
+            },
+
+            c => Token {
+                kind: TokenKind::Unknown,
+                value: String::from(c),
+            },
+        };
+
+        self.advance();
+
+        token
+    }
+
     pub fn tokenize(&mut self) -> Option<Token> {
         loop {
             let c = self.current()?;
@@ -134,12 +240,16 @@ impl<'a> Lexer<'a> {
                 return Some(self.tokenize_number());
             }
 
-            if c.is_ascii_alphabetic() {
+            if c.is_ascii_alphabetic() || c == '_' {
                 return Some(self.tokenize_identifier());
             }
 
             if c == '"' {
                 return Some(self.tokenize_string());
+            }
+
+            if Self::is_symbol_token(c) {
+                return Some(self.tokenize_symbol());
             }
 
             return Some(self.tokenize_unknown());
